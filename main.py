@@ -1,46 +1,36 @@
-from fastapi import FastAPI
-from pydantic import BaseModel
+from typing import List
+
+from fastapi import FastAPI, Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, insert
+
+from database import get_async_session
+from models import blogs
+from schemas import BlogSchema, BlogSchemaCreate
 
 app = FastAPI()
 
 
-@app.get('/hello/{name}')
-def hello(name):
-    return {'message': f'Hello {name}!'}
+@app.post('/blogs')
+async def add_blog(new_blog: BlogSchemaCreate, session: AsyncSession = Depends(get_async_session)):
+    query = insert(blogs).values(**dict(new_blog))
+    await session.execute(query)
+    await session.commit()
+    return {'success': True}
 
 
-fake_user = [
-    {'id': 1, 'role': 'admin', 'name': 'Bob'},
-    {'id': 2, 'role': 'investor', 'name': 'Bill'},
-    {'id': 1, 'role': 'trader', 'name': 'Juli'},
-]
+@app.get('/blogs', response_model=List[BlogSchema])
+async def blog_list(session: AsyncSession = Depends(get_async_session)):
+    try:
+        query = select(blogs)
+        result = await session.execute(query)
+        return result.all()
+    except Exception:
+        raise HTTPException(status_code=500)
 
 
-@app.get('/users')
-def users():
-    return fake_user
-
-
-@app.get('/users/{user_id}')
-def user_retrieve(user_id: int):
-    return list(filter(lambda x: x['id'] == user_id, fake_user))[0]
-
-
-class User(BaseModel):
-    id: int
-    role: str
-    name: str
-
-
-
-@app.post('/users', response_model=User)
-def add_user(user_list: User):
-    fake_user.extend(user_list)
-    return user_list
-
-
-@app.delete('/users/{user_id}')
-def delete_user(user_id: int):
-    user = list(filter(lambda x: x['id'] == user_id, fake_user))
-    fake_user.remove(user)
-    return {'message': 204}
+@app.get('/blogs{blog_id}', response_model=BlogSchema)
+async def blog_detail(blog_id: int, session: AsyncSession = Depends(get_async_session)):
+    query = select(blogs).where(blogs.c.id == blog_id)
+    result = await session.execute(query)
+    return result.one()
