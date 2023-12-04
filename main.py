@@ -4,10 +4,9 @@ from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, insert
 
-from database import get_async_session
+from auth.database import get_async_session
 from models import blogs
 from schemas import BlogSchema, BlogSchemaCreate
-
 app = FastAPI()
 
 
@@ -34,3 +33,5 @@ async def blog_detail(blog_id: int, session: AsyncSession = Depends(get_async_se
     query = select(blogs).where(blogs.c.id == blog_id)
     result = await session.execute(query)
     return result.one()
+
+

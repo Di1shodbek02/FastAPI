@@ -14,4 +14,3 @@ class BlogSchema(BaseModel):
 class BlogSchemaCreate(BaseModel):
     title: str
     description: str
-
